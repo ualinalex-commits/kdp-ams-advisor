@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 const QUICK_QUESTIONS = [
-  'Configurează structura completă de campanii',
-  'Recomandă oferte de start pentru fiecare tip',
+  'Configurează structura completă de campanii pentru paperback',
+  'Recomandă oferte de start pentru fiecare tip de campanie',
   'Calculează ACOS-ul meu de break-even',
   'Strategie de cuvinte cheie pentru genul meu',
   'Cum să împart bugetul între campanii',
@@ -12,22 +12,25 @@ const EMPTY_FORM = {
   title: '',
   genre: '',
   asin: '',
-  price: '',
-  royalty: '70',
-  ku: 'Nu',
+  paperbackPrice: '',
+  royaltyNet: '',
   budget: '',
   audience: '',
   acos: '',
 };
 
 function buildBookContext(book) {
+  const breakEven =
+    book.paperbackPrice && book.royaltyNet
+      ? ((parseFloat(book.royaltyNet) / parseFloat(book.paperbackPrice)) * 100).toFixed(1)
+      : null;
   const lines = [
     `Titlu: ${book.title}`,
     `Gen/sub-gen: ${book.genre}`,
-    book.asin ? `ASIN Kindle: ${book.asin}` : null,
-    book.price ? `Preț ebook: $${book.price}` : null,
-    `Rata royalty: ${book.royalty}%`,
-    `Înscrisă în Kindle Unlimited: ${book.ku}`,
+    book.asin ? `ASIN: ${book.asin}` : null,
+    book.paperbackPrice ? `Preț paperback: $${book.paperbackPrice}` : null,
+    book.royaltyNet ? `Royalty net per exemplar: $${book.royaltyNet}` : null,
+    breakEven ? `ACOS break-even calculat: ${breakEven}%` : null,
     book.budget ? `Buget lunar publicitate: $${book.budget}` : null,
     book.audience ? `Cititor țintă: ${book.audience}` : null,
     book.acos ? `ACOS curent: ${book.acos}%` : null,
@@ -68,34 +71,25 @@ function BookForm({ initial, onSave }) {
         {errors.genre && <span className="form-error">{errors.genre}</span>}
       </div>
       <div className="form-group">
-        <label>ASIN (Kindle)</label>
+        <label>ASIN</label>
         <input value={form.asin} onChange={set('asin')} placeholder="ex. B0XXXXXXX" />
       </div>
       <div className="form-row">
         <div className="form-group">
-          <label>Preț ebook ($)</label>
-          <input type="number" min="0" step="0.01" value={form.price} onChange={set('price')} placeholder="4.99" />
+          <label>Preț paperback ($)</label>
+          <input type="number" min="0" step="0.01" value={form.paperbackPrice} onChange={set('paperbackPrice')} placeholder="12.99" />
         </div>
         <div className="form-group">
-          <label>Rata royalty</label>
-          <select value={form.royalty} onChange={set('royalty')}>
-            <option value="35">35%</option>
-            <option value="70">70%</option>
-          </select>
+          <label>Royalty net/ex. ($)</label>
+          <input type="number" min="0" step="0.01" value={form.royaltyNet} onChange={set('royaltyNet')} placeholder="ex. 2.34" />
         </div>
       </div>
-      <div className="form-row">
-        <div className="form-group">
-          <label>Kindle Unlimited?</label>
-          <select value={form.ku} onChange={set('ku')}>
-            <option value="Da">Da</option>
-            <option value="Nu">Nu</option>
-          </select>
-        </div>
-        <div className="form-group">
-          <label>Buget lunar ($)</label>
-          <input type="number" min="0" step="1" value={form.budget} onChange={set('budget')} placeholder="150" />
-        </div>
+      <div className="form-group">
+        <label className="form-hint">Royalty net = valoarea exactă din KDP dashboard → Pricing</label>
+      </div>
+      <div className="form-group">
+        <label>Buget lunar ($)</label>
+        <input type="number" min="0" step="1" value={form.budget} onChange={set('budget')} placeholder="150" />
       </div>
       <div className="form-group">
         <label>Cititorul țintă</label>
@@ -113,8 +107,10 @@ function BookForm({ initial, onSave }) {
 }
 
 function BookCard({ book, onEdit }) {
-  const royaltyValue = parseFloat(book.price) * (parseFloat(book.royalty) / 100);
-  const breakEven = book.price ? ((royaltyValue / parseFloat(book.price)) * 100).toFixed(1) : null;
+  const breakEven =
+    book.paperbackPrice && book.royaltyNet
+      ? ((parseFloat(book.royaltyNet) / parseFloat(book.paperbackPrice)) * 100).toFixed(1)
+      : null;
 
   return (
     <div className="book-card">
@@ -126,30 +122,28 @@ function BookCard({ book, onEdit }) {
         <button className="btn-edit" onClick={onEdit}>Editează</button>
       </div>
       <div className="book-stats">
-        {book.price && (
+        {book.paperbackPrice && (
           <div className="stat">
-            <span className="stat-label">Preț</span>
-            <span className="stat-value">${book.price}</span>
+            <span className="stat-label">Preț paperback</span>
+            <span className="stat-value">${book.paperbackPrice}</span>
           </div>
         )}
-        <div className="stat">
-          <span className="stat-label">Royalty</span>
-          <span className="stat-value">{book.royalty}%</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">KU</span>
-          <span className="stat-value">{book.ku}</span>
-        </div>
+        {book.royaltyNet && (
+          <div className="stat">
+            <span className="stat-label">Royalty net</span>
+            <span className="stat-value">${book.royaltyNet}</span>
+          </div>
+        )}
+        {breakEven && (
+          <div className="stat stat-accent">
+            <span className="stat-label">Break-even ACOS</span>
+            <span className="stat-value">{breakEven}%</span>
+          </div>
+        )}
         {book.budget && (
           <div className="stat">
             <span className="stat-label">Buget/lună</span>
             <span className="stat-value">${book.budget}</span>
-          </div>
-        )}
-        {breakEven && book.price && (
-          <div className="stat stat-accent">
-            <span className="stat-label">Break-even ACOS</span>
-            <span className="stat-value">{book.royalty}%</span>
           </div>
         )}
         {book.acos && (
